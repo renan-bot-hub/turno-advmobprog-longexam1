@@ -1,0 +1,58 @@
+import 'custom_font.dart';
+import '../constants.dart';
+import 'package:flutter/material.dart';
+
+// ignore: must_be_immutable
+class CustomInkwellButton extends StatelessWidget {
+  final onTap;
+  final double height, width, fontSize;
+  final String buttonName;
+  final Icon icon;
+  final bool loading;
+  FontWeight fontWeight;
+  Color bgColor, fontColor;
+
+  CustomInkwellButton({
+    super.key,
+    required this.onTap,
+    required this.height,
+    required this.width,
+    this.buttonName = '',
+    this.bgColor = FB_DARK_PRIMARY,
+    this.fontColor = Colors.white,
+    this.fontSize = 1,
+    this.icon = const Icon(null),
+    this.fontWeight = FontWeight.normal, this.loading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: bgColor,
+      elevation: 5,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: const BorderRadius.all(Radius.circular(10)),
+        splashColor: FB_SECONDARY,
+        child: Container(
+          height: height,
+          width: width,
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          ),
+          child: Center(
+            child: buttonName == ''
+                ? icon
+                : loading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : CustomFont(
+                    text: buttonName,
+                    fontSize: fontSize,
+                    color: fontColor,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
