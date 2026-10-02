@@ -24,17 +24,20 @@ void main() {
     expect(await authService.getUserName(), 'Test User');
   });
 
-  test('demo credentials login succeeds with the DummyJSON example account', () async {
-    final authService = AuthService();
+  test(
+    'demo credentials login succeeds with the DummyJSON example account',
+    () async {
+      final authService = AuthService();
 
-    final result = await authService.login(
-      email: 'kminchelle',
-      password: '0lelplR',
-    );
+      final result = await authService.login(
+        email: 'kminchelle',
+        password: '0lelplR',
+      );
 
-    expect(result, isTrue);
-    expect(await authService.isLoggedIn(), isTrue);
-  });
+      expect(result, isTrue);
+      expect(await authService.isLoggedIn(), isTrue);
+    },
+  );
 
   test('fallback login succeeds for any non-empty credentials', () async {
     final authService = AuthService();
@@ -71,11 +74,22 @@ void main() {
       password: 'Password1!',
       email: 'turnouser@example.com',
       mobile: '09123456789',
+      age: 21,
+      gender: 'Male',
     );
 
     final userData = await userService.loginUser('turnouser', 'Password1!');
 
     expect(userData['username'], 'turnouser');
     expect(userData['firstName'], 'Turno');
+    expect(userData['age'], 21);
+    expect(userData['mobile'], '09123456789');
+    expect(userData['email'], 'turnouser@example.com');
+
+    final byEmail = await userService.loginUser(
+      'TurnoUser@Example.com',
+      'Password1!',
+    );
+    expect(byEmail['username'], 'turnouser');
   });
 }

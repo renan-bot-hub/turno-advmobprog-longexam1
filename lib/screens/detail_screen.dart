@@ -1,3 +1,4 @@
+import '../widgets/avatar_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../widgets/custom_font.dart';
@@ -176,7 +177,7 @@ class _DetailScreenState extends State<DetailScreen> {
                         ? CircleAvatar(
                             backgroundColor: theme.scaffoldBackgroundColor,
                             radius: ScreenUtil().setSp(25),
-                            backgroundImage: NetworkImage(widget.avatar),
+                            backgroundImage: avatarImage(widget.avatar),
                           )
                         : CircleAvatar(
                             radius: 18,
@@ -317,11 +318,17 @@ class _DetailScreenState extends State<DetailScreen> {
                           future: getCommentUser(comment.userId),
                           builder: (context, snapshot) {
                             final imageUrl = snapshot.data?.image ?? '';
+                            final authorName =
+                                snapshot.data?.fullName.isNotEmpty == true
+                                ? snapshot.data!.fullName
+                                : comment.fullName.isEmpty
+                                ? comment.username
+                                : comment.fullName;
 
                             return ListTile(
                               leading: CircleAvatar(
                                 backgroundImage: imageUrl.isNotEmpty
-                                    ? NetworkImage(imageUrl)
+                                    ? avatarImage(imageUrl)
                                     : null,
                                 backgroundColor: Theme.of(
                                   context,
@@ -341,9 +348,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                 vertical: 2.h,
                               ),
                               title: Text(
-                                comment.fullName.isEmpty
-                                    ? comment.username
-                                    : comment.fullName,
+                                authorName,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: colors.onSurface,
@@ -369,7 +374,7 @@ class _DetailScreenState extends State<DetailScreen> {
                               radius: 20,
                               backgroundColor: theme.scaffoldBackgroundColor,
                               backgroundImage: widget.commentAvatar.isNotEmpty
-                                  ? NetworkImage(widget.commentAvatar)
+                                  ? avatarImage(widget.commentAvatar)
                                   : null,
                               child: widget.commentAvatar.isEmpty
                                   ? const Icon(

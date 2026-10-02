@@ -5,6 +5,9 @@ import '../constants.dart';
 import '../models/user.dart';
 
 class UserService {
+  static bool isValidEmail(String email) =>
+      RegExp(r'^[\w.+-]+@[\w-]+(\.[\w-]+)+$').hasMatch(email.trim());
+
   Map<String, dynamic> data = {};
 
   Future<Map<String, dynamic>> registerUser({
@@ -14,12 +17,19 @@ class UserService {
     required String password,
     required String email,
     required String mobile,
+    required int age,
+    required String gender,
   }) async {
     final sanitizedUsername = username.trim();
     final sanitizedPassword = password.trim();
+    final sanitizedEmail = email.trim().toLowerCase();
 
     if (sanitizedUsername.isEmpty || sanitizedPassword.isEmpty) {
       throw Exception('Username and password are required');
+    }
+
+    if (!isValidEmail(sanitizedEmail)) {
+      throw Exception('Enter a valid email address');
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -38,19 +48,30 @@ class UserService {
       throw Exception('Username already exists');
     }
 
+    final emailExists = users.any(
+      (user) =>
+          (user['email'] ?? '').toString().toLowerCase() == sanitizedEmail,
+    );
+
+    if (emailExists) {
+      throw Exception('Email is already registered');
+    }
+
     final userData = {
       'id': DateTime.now().millisecondsSinceEpoch,
       'username': sanitizedUsername,
-      'email': email.isNotEmpty ? email : '$sanitizedUsername@turno.local',
+      'email': sanitizedEmail,
       'firstName': firstName.trim(),
       'lastName': lastName.trim(),
-      'gender': 'Prefer not to say',
+      'gender': gender,
+      'age': age,
       'image': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
       'accessToken': 'local-${DateTime.now().millisecondsSinceEpoch}',
       'refreshToken': 'local-refresh-${DateTime.now().millisecondsSinceEpoch}',
       'token': 'local-${DateTime.now().millisecondsSinceEpoch}',
       'password': sanitizedPassword,
       'mobile': mobile.trim(),
+      'coverImage': '',
     };
 
     users.add(userData);
@@ -106,8 +127,12 @@ class UserService {
       final savedUsername = (user['username'] ?? '').toString();
       final savedPassword = (user['password'] ?? '').toString();
 
-      if (savedUsername.toLowerCase() == username.trim().toLowerCase() &&
-          savedPassword == password.trim()) {
+      final savedEmail = (user['email'] ?? '').toString().toLowerCase();
+      final identifier = username.trim().toLowerCase();
+      final matchesIdentifier =
+          savedUsername.toLowerCase() == identifier || savedEmail == identifier;
+
+      if (matchesIdentifier && savedPassword == password.trim()) {
         return {
           'id': user['id'] ?? 0,
           'username': savedUsername,
@@ -115,6 +140,9 @@ class UserService {
           'firstName': user['firstName'] ?? 'Turno',
           'lastName': user['lastName'] ?? 'User',
           'gender': user['gender'] ?? 'Prefer not to say',
+          'age': user['age'] ?? 0,
+          'mobile': user['mobile'] ?? '',
+          'coverImage': user['coverImage'] ?? '',
           'image':
               user['image'] ??
               'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
@@ -138,7 +166,10 @@ class UserService {
     await prefs.setString('firstName', user.firstName);
     await prefs.setString('lastName', user.lastName);
     await prefs.setString('gender', user.gender);
+    await prefs.setInt('age', user.age);
+    await prefs.setString('mobile', user.mobile);
     await prefs.setString('image', user.image);
+    await prefs.setString('coverImage', user.coverImage);
     await prefs.setString('accessToken', user.accessToken);
     await prefs.setString('refreshToken', user.refreshToken);
 
@@ -159,7 +190,10 @@ class UserService {
       'firstName': prefs.getString('firstName') ?? '',
       'lastName': prefs.getString('lastName') ?? '',
       'gender': prefs.getString('gender') ?? '',
+      'age': prefs.getInt('age') ?? 0,
+      'mobile': prefs.getString('mobile') ?? '',
       'image': prefs.getString('image') ?? '',
+      'coverImage': prefs.getString('coverImage') ?? '',
       'accessToken': prefs.getString('accessToken') ?? '',
       'refreshToken': prefs.getString('refreshToken') ?? '',
       'token': prefs.getString('token') ?? prefs.getString('accessToken') ?? '',
@@ -171,7 +205,21 @@ class UserService {
     return User.fromJson(userData);
   }
 
-  Future<User> getUserById(int userId) async {
+  // Authors repeat across the feed, notifications and comments; fetch each once.
+  static final Map<int, Future<User>> _userCache = {};
+
+  Future<User> getUserById(int userId) {
+    final cached = _userCache[userId];
+    if (cached != null) return cached;
+
+    final future = _fetchUserById(userId);
+    _userCache[userId] = future;
+    // Drop failed lookups so they can be retried.
+    future.then<void>((_) {}, onError: (_) => _userCache.remove(userId));
+    return future;
+  }
+
+  Future<User> _fetchUserById(int userId) async {
     final prefs = await SharedPreferences.getInstance();
     final storedUsers = prefs.getStringList('registered_users') ?? [];
 
@@ -207,7 +255,10 @@ class UserService {
         'firstName',
         'lastName',
         'gender',
+        'age',
+        'mobile',
         'image',
+        'coverImage',
         'accessToken',
         'refreshToken',
         'token',

@@ -1,12 +1,15 @@
 import '../models/user.dart';
+import '../providers/theme_provider.dart';
 import '../screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 import '../constants.dart';
 import '../screens/newsfeed_screen.dart';
 import '../screens/notification_screen.dart';
 import '../services/user_service.dart';
-import '../widgets/custom_font.dart';
+import '../widgets/nansux_logo.dart';
+import '../widgets/user_avatar.dart';
 
 class HomeScreen extends StatefulWidget {
   final User user;
@@ -21,199 +24,301 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goTo(int index) {
+    setState(() => _selectedIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('You can sign back in any time.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: FB_PRIMARY),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    await UserService().logout();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      drawer: Drawer(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  ScreenUtil().setWidth(12),
-                  ScreenUtil().setHeight(50),
-                  ScreenUtil().setWidth(12),
-                  0,
-                ),
-                children: [
-                  Container(
-                    margin: EdgeInsets.only(bottom: ScreenUtil().setHeight(10)),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: colors.surface,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          spreadRadius: 2,
-                          blurRadius: 5,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: theme.scaffoldBackgroundColor,
-                              radius: 20,
-                              backgroundImage: NetworkImage(widget.user.image),
-                            ),
-                            SizedBox(width: ScreenUtil().setWidth(12)),
-                            CustomFont(
-                              text: widget.user.fullName,
-                              fontSize: ScreenUtil().setSp(18),
-                              color: colors.onSurface,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.settings),
-                    title: const Text('Settings'),
-                    onTap: () => Navigator.pushNamed(context, '/settings'),
-                  ),
-
-                  ListTile(
-                    leading: const Icon(Icons.person),
-                    title: const Text('Profile'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pageController.jumpToPage(2);
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            Container(
-              width: double.infinity,
-              color: theme.colorScheme.surface,
-              padding: const EdgeInsets.all(12),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: FB_PRIMARY,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () async {
-                    await UserService().logout();
-
-                    if (!context.mounted) return;
-
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      '/signin',
-                      (route) => false,
-                    );
-                  },
-                  child: const Text('Log out'),
-                ),
-              ),
-            ),
-
-            SizedBox(height: ScreenUtil().setHeight(13)),
-          ],
-        ),
-      ),
+      drawer: _buildDrawer(theme),
       appBar: AppBar(
         backgroundColor: colors.surface,
-        shadowColor: Colors.black,
-        surfaceTintColor: theme.scaffoldBackgroundColor,
-        elevation: 1,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        shadowColor: Colors.black26,
+        titleSpacing: 0,
         leading: Builder(
-          builder: (context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                Scaffold.of(context).openDrawer();
-              },
-            );
-          },
+          builder: (context) => IconButton(
+            tooltip: 'Menu',
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
-        title: CustomFont(
-          text: _getAppBarTitle(_selectedIndex),
-          fontSize: ScreenUtil().setSp(25),
-          color: _getAppBarTitleColor(_selectedIndex),
-          fontFamily: 'Klavika',
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: _selectedIndex == 0
+              ? const NansuXLogo(key: ValueKey('logo'), size: 30)
+              : Text(
+                  _selectedIndex == 1 ? 'Notifications' : 'Profile',
+                  key: ValueKey(_selectedIndex),
+                  style: TextStyle(
+                    fontSize: 21.sp,
+                    fontWeight: FontWeight.bold,
+                    color: colors.onSurface,
+                  ),
+                ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.pushNamed(context, '/settings'),
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: 12.w, left: 4.w),
+            child: GestureDetector(
+              onTap: () => _goTo(2),
+              child: UserAvatar(user: widget.user, radius: 16),
+            ),
+          ),
+        ],
       ),
       body: PageView(
         controller: _pageController,
+        onPageChanged: (page) => setState(() => _selectedIndex = page),
         children: <Widget>[
           NewsFeedScreen(user: widget.user),
           const NotificationScreen(),
           ProfileScreen(user: widget.user),
         ],
-        onPageChanged: (page) {
-          setState(() {
-            _selectedIndex = page;
-          });
-        },
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        onTap: _onTappedBar,
-        backgroundColor: theme.colorScheme.surface,
-        selectedItemColor: theme.colorScheme.primary,
-        unselectedItemColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _goTo,
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: FB_PRIMARY.withValues(alpha: 0.15),
+        height: 64,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: [
+          const NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded, color: FB_PRIMARY),
+            label: 'Home',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.notifications_none_rounded),
+            selectedIcon: Icon(Icons.notifications_rounded, color: FB_PRIMARY),
             label: 'Notifications',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(
+            icon: UserAvatar(user: widget.user, radius: 12),
+            selectedIcon: UserAvatar(
+              user: widget.user,
+              radius: 12,
+              borderWidth: 2,
+              borderColor: FB_PRIMARY,
+            ),
+            label: 'Profile',
+          ),
         ],
-        currentIndex: _selectedIndex,
       ),
     );
   }
 
-  void _onTappedBar(int value) {
-    setState(() {
-      _selectedIndex = value;
-    });
-    _pageController.jumpToPage(value);
-  }
+  Widget _buildDrawer(ThemeData theme) {
+    final colors = theme.colorScheme;
+    final themeProvider = context.watch<ThemeProvider>();
 
-  String _getAppBarTitle(int index) {
-    switch (index) {
-      case 0:
-        return AppStrings.appName;
-      case 1:
-        return 'Notifications';
-      case 2:
-        return widget.user.fullName;
-      default:
-        return '';
+    Widget item(
+      IconData icon,
+      String label,
+      VoidCallback onTap, {
+      bool selected = false,
+    }) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 2.h),
+        child: ListTile(
+          leading: Icon(icon, color: selected ? FB_PRIMARY : null),
+          title: Text(
+            label,
+            style: TextStyle(
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              color: selected ? FB_PRIMARY : colors.onSurface,
+            ),
+          ),
+          selected: selected,
+          selectedTileColor: FB_PRIMARY.withValues(alpha: 0.1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          onTap: onTap,
+        ),
+      );
     }
-  }
 
-  Color _getAppBarTitleColor(int index) {
-    switch (index) {
-      case 0:
-        return FB_PRIMARY;
-      case 1:
-        return Theme.of(context).colorScheme.onSurface;
-      case 2:
-        return Theme.of(context).colorScheme.onSurface;
-      default:
-        return Theme.of(context).colorScheme.onSurface;
+    void navigate(int index) {
+      Navigator.pop(context);
+      _goTo(index);
     }
+
+    return Drawer(
+      backgroundColor: colors.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ProfileCover(user: widget.user, aspectRatio: 16 / 7),
+              Positioned(
+                left: 20.w,
+                bottom: -32,
+                child: UserAvatar(
+                  user: widget.user,
+                  radius: 34,
+                  borderWidth: 3,
+                  borderColor: colors.surface,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 42.h),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.user.fullName,
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                    color: colors.onSurface,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  widget.user.email.isNotEmpty
+                      ? widget.user.email
+                      : '@${widget.user.username}',
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    color: colors.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 12.h),
+          Divider(color: colors.onSurface.withValues(alpha: 0.08)),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                item(
+                  Icons.home_outlined,
+                  'Home',
+                  () => navigate(0),
+                  selected: _selectedIndex == 0,
+                ),
+                item(
+                  Icons.notifications_none_rounded,
+                  'Notifications',
+                  () => navigate(1),
+                  selected: _selectedIndex == 1,
+                ),
+                item(
+                  Icons.person_outline,
+                  'Profile',
+                  () => navigate(2),
+                  selected: _selectedIndex == 2,
+                ),
+                item(Icons.settings_outlined, 'Settings', () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/settings');
+                }),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w),
+                  child: SwitchListTile(
+                    secondary: Icon(
+                      themeProvider.isDark
+                          ? Icons.dark_mode_outlined
+                          : Icons.light_mode_outlined,
+                    ),
+                    title: const Text('Dark mode'),
+                    value: themeProvider.isDark,
+                    activeThumbColor: FB_PRIMARY,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onChanged: (_) => themeProvider.toggleTheme(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
+              child: SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.error,
+                    side: BorderSide(
+                      color: colors.error.withValues(alpha: 0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _confirmLogout();
+                  },
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Log out'),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

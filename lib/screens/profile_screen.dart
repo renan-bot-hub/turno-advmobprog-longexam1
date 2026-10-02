@@ -2,12 +2,12 @@ import '../models/post.dart';
 import '../models/user.dart';
 import '../services/post_service.dart';
 import '../widgets/custom_dialogs.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-
-import '../widgets/custom_button.dart';
+import '../widgets/avatar_image.dart';
 import '../widgets/custom_font.dart';
 import '../constants.dart';
 import '../widgets/post_card.dart';
+import '../widgets/post_composer.dart';
+import '../widgets/user_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -22,12 +22,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   int selectedTab = 0;
   final PostService postService = PostService();
-  final TextEditingController _postController = TextEditingController();
   late Future<List<Post>> profilePosts;
-  bool _isSubmitting = false;
-
-  final String profileImgUrl =
-      'https://media.discordapp.net/attachments/856874434605744142/1443981776560324679/sketch-1688837704405.jpg?ex=697631d3&is=6974e053&hm=f0917d728382d0aacc3c7b9295c8d226c6d59debe534a69663f11a724f678222&=&format=webp&width=648&height=648';
 
   @override
   void initState() {
@@ -35,299 +30,214 @@ class _ProfileScreenState extends State<ProfileScreen> {
     profilePosts = postService.getPostsByUser(widget.user.id);
   }
 
-  @override
-  void dispose() {
-    _postController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _createPost() async {
-    final body = _postController.text.trim();
-    if (body.isEmpty || _isSubmitting) return;
-
-    setState(() => _isSubmitting = true);
-    try {
-      await postService.addLocalPost(body: body, userId: widget.user.id);
-      _postController.clear();
-      if (!mounted) return;
-      setState(() {
-        profilePosts = postService.getPostsByUser(widget.user.id);
-        _isSubmitting = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not save post')),
-      );
-    }
-  }
-
-  Widget _buildPostComposer() {
-    final colors = Theme.of(context).colorScheme;
-    return Card(
-      margin: EdgeInsets.fromLTRB(10.w, 10.h, 10.w, 4.h),
-      color: colors.surface,
-      child: Padding(
-        padding: EdgeInsets.all(12.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: colors.surfaceContainerHighest,
-                  backgroundImage: widget.user.image.isNotEmpty
-                      ? NetworkImage(widget.user.image)
-                      : null,
-                  child: widget.user.image.isEmpty
-                      ? Icon(Icons.person, color: colors.onSurfaceVariant)
-                      : null,
-                ),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: TextField(
-                    controller: _postController,
-                    minLines: 1,
-                    maxLines: 5,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: "What's on your mind?",
-                      filled: true,
-                      fillColor: colors.surfaceContainerHighest,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 14.w,
-                        vertical: 11.h,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(28),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(28),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(28),
-                        borderSide: BorderSide(color: colors.primary),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8.h),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: _isSubmitting ? null : _createPost,
-                style: FilledButton.styleFrom(backgroundColor: FB_PRIMARY),
-                icon: _isSubmitting
-                    ? SizedBox(
-                        width: 16.w,
-                        height: 16.w,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.send),
-                label: const Text('Post'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<void> _refresh() async {
+    final future = postService.getPostsByUser(widget.user.id);
+    setState(() => profilePosts = future);
+    await future.catchError((_) => <Post>[]);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
 
-    return DefaultTabController(
-      length: 3,
+    return RefreshIndicator(
+      onRefresh: _refresh,
       child: ListView(
+        padding: EdgeInsets.only(bottom: 24.h),
         children: [
-          Container(
-            color: colors.surfaceContainer,
-            child: Column(
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    AspectRatio(
-                      aspectRatio: 736 / 414,
-                      child: Image.asset(
-                        'assets/images/hirin.jpg',
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: -50,
-                      left: ScreenUtil().setWidth(20),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: theme.scaffoldBackgroundColor,
-                            ),
-                            child: ClipOval(
-                              child: CachedNetworkImage(
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                                imageUrl: widget.user.image,
-                                progressIndicatorBuilder:
-                                    (context, url, downloadProgress) =>
-                                        CircularProgressIndicator(
-                                          color: theme.scaffoldBackgroundColor,
-                                          value: downloadProgress.progress,
-                                        ),
-                                errorWidget: (context, url, error) =>
-                                    Icon(Icons.error),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: CircleAvatar(
-                              radius: 15,
-                              backgroundColor: Colors.white,
-                              child: const Icon(
-                                Icons.camera_alt,
-                                size: 16,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: ScreenUtil().setHeight(55)),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: ScreenUtil().setWidth(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomFont(
-                        text: widget.user.fullName,
-                        fontWeight: FontWeight.bold,
-                        fontSize: ScreenUtil().setSp(20),
-                        color: colors.onSurface,
-                      ),
-                      SizedBox(height: ScreenUtil().setHeight(5)),
-                      Row(
-                        children: [
-                          CustomFont(
-                            text: '6.7m',
-                            fontSize: ScreenUtil().setSp(15),
-                            color: colors.onSurface,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          SizedBox(width: ScreenUtil().setWidth(10)),
-                          CustomFont(
-                            text: 'followers',
-                            fontSize: ScreenUtil().setSp(15),
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w100,
-                          ),
-                          SizedBox(width: ScreenUtil().setWidth(5)),
-                          Icon(
-                            Icons.circle,
-                            size: ScreenUtil().setSp(5),
-                            color: Colors.grey,
-                          ),
-                          SizedBox(width: ScreenUtil().setWidth(5)),
-                          CustomFont(
-                            text: '0',
-                            fontSize: ScreenUtil().setSp(15),
-                            color: colors.onSurface,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          SizedBox(width: ScreenUtil().setWidth(10)),
-                          CustomFont(
-                            text: 'following',
-                            fontSize: ScreenUtil().setSp(15),
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w100,
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: ScreenUtil().setHeight(10)),
-                      Row(
-                        children: [
-                          CustomButton(
-                            buttonName: 'Follow',
-                            onPressed: () {},
-                            fontColor: Theme.of(context).colorScheme.onPrimary,
-                            buttonType: 'filled',
-                          ),
-                          SizedBox(width: ScreenUtil().setWidth(10)),
-                          CustomButton(
-                            buttonName: 'Message',
-                            onPressed: () {},
-                            fontColor: Theme.of(context).colorScheme.primary,
-                            buttonType: 'outlined',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: ScreenUtil().setHeight(10)),
-                TabBar(
-                  dividerColor: colors.onPrimary,
-                  indicatorColor: FB_PRIMARY,
-                  onTap: (index) {
-                    setState(() => selectedTab = index);
-                  },
-                  tabs: [
-                    Tab(
-                      child: CustomFont(
-                        text: 'Posts',
-                        fontSize: ScreenUtil().setSp(15),
-                        color: colors.onSurface,
-                      ),
-                    ),
-                    Tab(
-                      child: CustomFont(
-                        text: 'About',
-                        fontSize: ScreenUtil().setSp(15),
-                        color: colors.onSurface,
-                      ),
-                    ),
-                    Tab(
-                      child: CustomFont(
-                        text: 'Photos',
-                        fontSize: ScreenUtil().setSp(15),
-                        color: colors.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          _buildHeader(theme),
+          SizedBox(height: 8.h),
           if (selectedTab == 0)
             _buildPosts()
           else if (selectedTab == 1)
             _buildAbout()
           else
             _buildPhotos(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    final colors = theme.colorScheme;
+    const avatarRadius = 52.0;
+    final muted = colors.onSurface.withValues(alpha: 0.6);
+
+    return Container(
+      color: colors.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              GestureDetector(
+                onTap: widget.user.coverImage.isEmpty
+                    ? null
+                    : () => customShowImageDialog(
+                        context,
+                        image: widget.user.coverImage,
+                        isNetwork: !isAssetImage(widget.user.coverImage),
+                      ),
+                child: ProfileCover(user: widget.user, aspectRatio: 16 / 8),
+              ),
+              Positioned(
+                left: 20.w,
+                bottom: -avatarRadius,
+                child: GestureDetector(
+                  onTap: widget.user.image.isEmpty
+                      ? null
+                      : () => customShowImageDialog(
+                          context,
+                          image: widget.user.image,
+                          isNetwork: !isAssetImage(widget.user.image),
+                        ),
+                  child: UserAvatar(
+                    user: widget.user,
+                    radius: avatarRadius,
+                    borderWidth: 4,
+                    borderColor: colors.surface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: avatarRadius + 12),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CustomFont(
+                  text: widget.user.fullName,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22.sp,
+                  color: colors.onSurface,
+                ),
+                SizedBox(height: 2.h),
+                CustomFont(
+                  text: '@${widget.user.username}',
+                  fontSize: 14.sp,
+                  color: muted,
+                ),
+                SizedBox(height: 14.h),
+                FutureBuilder<List<Post>>(
+                  future: profilePosts,
+                  builder: (context, snapshot) => Row(
+                    children: [
+                      _stat('${snapshot.data?.length ?? 0}', 'Posts'),
+                      _statDivider(colors),
+                      _stat('${widget.user.photos.length}', 'Photos'),
+                      if (widget.user.age > 0) ...[
+                        _statDivider(colors),
+                        _stat('${widget.user.age}', 'Age'),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16.h),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 14.h),
+            child: _buildTabs(colors),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String value, String label) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.only(right: 16.w),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+              color: colors.onSurface,
+            ),
+          ),
+          SizedBox(width: 4.w),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: colors.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statDivider(ColorScheme colors) => Padding(
+    padding: EdgeInsets.only(right: 16.w),
+    child: Icon(
+      Icons.circle,
+      size: 4,
+      color: colors.onSurface.withValues(alpha: 0.3),
+    ),
+  );
+
+  Widget _buildTabs(ColorScheme colors) {
+    const tabs = [
+      (Icons.dynamic_feed_outlined, 'Posts'),
+      (Icons.info_outline, 'About'),
+      (Icons.photo_library_outlined, 'Photos'),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: colors.onSurface.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < tabs.length; i++)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => selectedTab = i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: EdgeInsets.symmetric(vertical: 10.h),
+                  decoration: BoxDecoration(
+                    color: selectedTab == i ? FB_PRIMARY : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        tabs[i].$1,
+                        size: 17.sp,
+                        color: selectedTab == i
+                            ? Colors.white
+                            : colors.onSurface.withValues(alpha: 0.7),
+                      ),
+                      SizedBox(width: 6.w),
+                      Text(
+                        tabs[i].$2,
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                          color: selectedTab == i
+                              ? Colors.white
+                              : colors.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -341,16 +251,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         return Column(
           children: [
-            _buildPostComposer(),
+            PostComposer(user: widget.user, onPosted: _refresh),
             if (snapshot.connectionState == ConnectionState.waiting)
-              const Center(child: CircularProgressIndicator())
+              Padding(
+                padding: EdgeInsets.all(24.h),
+                child: const Center(child: CircularProgressIndicator()),
+              )
             else if (snapshot.hasError)
-              const Center(child: Text('Failed to load posts'))
+              _emptyState(
+                icon: Icons.cloud_off_outlined,
+                title: 'Could not load posts',
+                subtitle: 'Pull down to try again.',
+              )
             else if (posts.isEmpty)
-              const Center(child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No posts yet'),
-              ))
+              _emptyState(
+                icon: Icons.edit_note_outlined,
+                title: 'No posts yet',
+                subtitle: 'Share your first thought above.',
+              )
             else
               ...posts.map(
                 (post) => PostCard(
@@ -379,34 +297,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAbout() {
     final colors = Theme.of(context).colorScheme;
+    final items = [
+      (Icons.person_outline, 'Name', widget.user.fullName),
+      (Icons.alternate_email, 'Username', widget.user.username),
+      (Icons.mail_outline, 'Email', widget.user.email),
+      (Icons.wc_outlined, 'Gender', widget.user.gender),
+      if (widget.user.age > 0)
+        (Icons.cake_outlined, 'Age', '${widget.user.age} years old'),
+      if (widget.user.mobile.isNotEmpty)
+        (Icons.phone_outlined, 'Mobile', widget.user.mobile),
+    ].where((item) => item.$3.isNotEmpty).toList();
+
     return Container(
-      color: colors.surface,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      margin: EdgeInsets.symmetric(horizontal: 12.w),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         children: [
-          _buildAboutItem(
-            icon: Icons.person_outline,
-            value: widget.user.fullName,
-            label: 'Name',
-          ),
-          _aboutDivider(colors),
-          _buildAboutItem(
-            icon: Icons.alternate_email,
-            value: widget.user.username,
-            label: 'Username',
-          ),
-          _aboutDivider(colors),
-          _buildAboutItem(
-            icon: Icons.mail_outline,
-            value: widget.user.email,
-            label: 'Email',
-          ),
-          _aboutDivider(colors),
-          _buildAboutItem(
-            icon: Icons.people_outline,
-            value: widget.user.gender,
-            label: 'Gender',
-          ),
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) _aboutDivider(colors),
+            _buildAboutItem(
+              icon: items[i].$1,
+              label: items[i].$2,
+              value: items[i].$3,
+            ),
+          ],
         ],
       ),
     );
@@ -420,32 +338,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final colors = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 9.h),
+      padding: EdgeInsets.symmetric(vertical: 12.h),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 36.w,
-            child: Icon(icon, size: 23.sp, color: colors.onSurfaceVariant),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: FB_PRIMARY.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: FB_PRIMARY),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: 14.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CustomFont(
+                  text: label,
+                  fontSize: 12.sp,
+                  color: colors.onSurface.withValues(alpha: 0.6),
+                ),
+                SizedBox(height: 2.h),
+                CustomFont(
                   text: value,
-                  fontSize: 17.sp,
+                  fontSize: 15.sp,
                   color: colors.onSurface,
                   fontWeight: FontWeight.w600,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 2.h),
-                CustomFont(
-                  text: label,
-                  fontSize: 12.sp,
-                  color: colors.onSurfaceVariant,
                 ),
               ],
             ),
@@ -459,75 +381,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Divider(
       height: 1,
       thickness: 0.5,
-      indent: 48.w,
+      indent: 52,
       color: colors.onSurface.withValues(alpha: 0.12),
     );
   }
 
   Widget _buildPhotos() {
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [
-        GestureDetector(
-          child: Image.asset('assets/images/valorant.png', fit: BoxFit.cover),
-          onTap: () => customShowImageDialog(
-            context,
-            image: 'assets/images/valorant.png',
+    final photos = widget.user.photos;
+    if (photos.isEmpty) {
+      return _emptyState(
+        icon: Icons.photo_library_outlined,
+        title: 'No photos yet',
+        subtitle: 'Photos you share will show up here.',
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
+      child: GridView.count(
+        crossAxisCount: 3,
+        mainAxisSpacing: 4,
+        crossAxisSpacing: 4,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          for (final photo in photos)
+            GestureDetector(
+              onTap: () => customShowImageDialog(context, image: photo),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(photo, fit: BoxFit.cover, cacheWidth: 360),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 40.h, horizontal: 24.w),
+      child: Column(
+        children: [
+          Icon(icon, size: 44, color: colors.onSurface.withValues(alpha: 0.3)),
+          SizedBox(height: 10.h),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+              color: colors.onSurface,
+            ),
           ),
-        ),
-        GestureDetector(
-          child: Image.asset('assets/images/line.png', fit: BoxFit.cover),
-          onTap: () =>
-              customShowImageDialog(context, image: 'assets/images/line.png'),
-        ),
-        GestureDetector(
-          child: Image.asset(
-            'assets/images/cover_photo.png',
-            fit: BoxFit.cover,
+          SizedBox(height: 4.h),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13.sp,
+              color: colors.onSurface.withValues(alpha: 0.6),
+            ),
           ),
-          onTap: () => customShowImageDialog(
-            context,
-            image: 'assets/images/cover_photo.png',
-          ),
-        ),
-        GestureDetector(
-          child: Image.asset(
-            'assets/images/user_avatar.png',
-            fit: BoxFit.cover,
-          ),
-          onTap: () => customShowImageDialog(
-            context,
-            image: 'assets/images/user_avatar.png',
-          ),
-        ),
-        GestureDetector(
-          child: Image.asset('assets/images/cat1.png', fit: BoxFit.cover),
-          onTap: () =>
-              customShowImageDialog(context, image: 'assets/images/cat1.png'),
-        ),
-        GestureDetector(
-          child: Image.asset('assets/images/cat2.png', fit: BoxFit.cover),
-          onTap: () =>
-              customShowImageDialog(context, image: 'assets/images/cat2.png'),
-        ),
-        GestureDetector(
-          child: Image.asset('assets/images/cat3.png', fit: BoxFit.cover),
-          onTap: () =>
-              customShowImageDialog(context, image: 'assets/images/cat3.png'),
-        ),
-        GestureDetector(
-          child: Image.asset(
-            'assets/images/discord_mod.png',
-            fit: BoxFit.cover,
-          ),
-          onTap: () => customShowImageDialog(
-            context,
-            image: 'assets/images/discord_mod.png',
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

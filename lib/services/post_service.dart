@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants.dart';
 import '../models/post.dart';
+import '../models/user.dart';
+import 'user_service.dart';
 
 class PostLikeState {
   final int count;
@@ -15,6 +17,19 @@ class PostLikeState {
 class PostService {
   static const _localPostsKey = 'local_posts';
   static const _localLikesKeyPrefix = 'local_likes_';
+
+  /// Feed posts paired with their authors, used by the feed and notifications.
+  Future<List<({Post post, User author})>> getPostsWithAuthors() async {
+    final posts = await getPosts();
+    final userService = UserService();
+    final authors = await Future.wait(
+      posts.map((post) => userService.getUserById(post.userId)),
+    );
+    return [
+      for (var i = 0; i < posts.length; i++)
+        (post: posts[i], author: authors[i]),
+    ];
+  }
 
   Future<List<Post>> getPosts({int limit = 30, int skip = 0}) async {
     final uri = Uri.parse('$host/posts?limit=$limit&skip=$skip');

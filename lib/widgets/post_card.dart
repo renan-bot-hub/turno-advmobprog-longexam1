@@ -1,3 +1,4 @@
+import 'avatar_image.dart';
 import 'custom_inkwell_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -126,7 +127,9 @@ class _PostCardState extends State<PostCard> {
       child: Card(
         color: colors.surface,
         margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
         child: Padding(
           padding: EdgeInsets.all(12.w),
           child: Column(
@@ -139,7 +142,7 @@ class _PostCardState extends State<PostCard> {
                       ? CircleAvatar(
                           backgroundColor: theme.scaffoldBackgroundColor,
                           radius: 18,
-                          backgroundImage: NetworkImage(widget.avatar),
+                          backgroundImage: avatarImage(widget.avatar),
                         )
                       : CircleAvatar(
                           radius: 18,

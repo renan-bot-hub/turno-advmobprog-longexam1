@@ -1,8 +1,5 @@
-import '../constants.dart';
+import '../widgets/auth_widgets.dart';
 import '../widgets/custom_dialogs.dart';
-import '../widgets/custom_font.dart';
-import '../widgets/custom_inkwell_button.dart';
-import '../widgets/custom_textformfield.dart';
 import '../services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,8 +13,8 @@ class SignInScreen extends StatefulWidget {
 
 class _SignInScreenState extends State<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
-  TextEditingController usernameController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
   final UserService _userService = UserService();
 
   bool _isLoading = false;
@@ -31,6 +28,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _login() async {
+    FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -52,11 +50,7 @@ class _SignInScreenState extends State<SignInScreen> {
         _isLoading = false;
       });
 
-      Navigator.pushReplacementNamed(
-        context,
-        '/home',
-        arguments: user,
-      );
+      Navigator.pushReplacementNamed(context, '/home', arguments: user);
     } catch (error) {
       if (!mounted) return;
 
@@ -66,127 +60,58 @@ class _SignInScreenState extends State<SignInScreen> {
 
       customDialog(
         context,
-        title: 'Error',
-        content: 'Username and password does not match',
+        title: 'Sign in failed',
+        content: 'Your username or email and password do not match',
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 24.w),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: 480.w),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: CustomFont(
-                            text: AppStrings.appName,
-                            fontSize: ScreenUtil().setSp(38),
-                            color: FB_PRIMARY,
-                            fontFamily: 'Klavika',
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 28.h),
-                        CustomTextformfield(
-                          height: ScreenUtil().setHeight(12),
-                          width: ScreenUtil().setWidth(14),
-                          controller: usernameController,
-                          validator: (value) =>
-                              value!.isEmpty ? 'Enter username' : null,
-                          onSaved: (value) => usernameController.text = value!,
-                          fontSize: ScreenUtil().setSp(15),
-                          fontColor: colors.onSurface,
-                          hintTextSize: ScreenUtil().setSp(15),
-                          hintText: 'Username',
-                          fillColor: colors.surface,
-                        ),
-                        SizedBox(height: 12.h),
-                        CustomTextformfield(
-                          height: ScreenUtil().setHeight(12),
-                          width: ScreenUtil().setWidth(14),
-                          controller: passwordController,
-                          isObscure: _obscurePassword,
-                          validator: (value) => value!.isEmpty
-                              ? 'Enter your password'
-                              : null,
-                          onSaved: (value) => passwordController.text = value!,
-                          fontSize: ScreenUtil().setSp(15),
-                          fontColor: colors.onSurface,
-                          hintTextSize: ScreenUtil().setSp(15),
-                          hintText: 'Password',
-                          fillColor: colors.surface,
-                          toggleIcon: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                        SizedBox(height: 28.h),
-                        CustomInkwellButton(
-                          onTap: _isLoading ? null : _login,
-                          bgColor: FB_PRIMARY,
-                          height: ScreenUtil().setHeight(44),
-                          width: double.infinity,
-                          buttonName: 'Login',
-                          fontSize: ScreenUtil().setSp(15),
-                          loading: _isLoading,
-                        ),
-                        SizedBox(height: 24.h),
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(vertical: 12.h),
-                          color: colors.surface,
-                          child: Wrap(
-                            alignment: WrapAlignment.center,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              Text(
-                                'You don\'t have an account? ',
-                                style: TextStyle(
-                                  color: colors.onSurface,
-                                  fontSize: ScreenUtil().setSp(12),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => Navigator.popAndPushNamed(
-                                  context,
-                                  '/signup',
-                                ),
-                                child: Text(
-                                  'Register',
-                                  style: TextStyle(
-                                    color: FB_PRIMARY,
-                                    fontSize: ScreenUtil().setSp(15),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+    return AuthScaffold(
+      title: 'Welcome back',
+      subtitle: 'Sign in to keep scrolling with NansuX',
+      footer: AuthSwitchPrompt(
+        question: "Don't have an account?",
+        action: 'Create one',
+        onTap: () => Navigator.popAndPushNamed(context, '/signup'),
+      ),
+      child: AutofillGroup(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AuthTextField(
+                controller: usernameController,
+                label: 'Username or email',
+                icon: Icons.person_outline,
+                autofillHints: const [AutofillHints.username],
+                validator: (value) => (value ?? '').trim().isEmpty
+                    ? 'Enter your username or email'
+                    : null,
               ),
-            ),
+              SizedBox(height: 14.h),
+              AuthTextField(
+                controller: passwordController,
+                label: 'Password',
+                icon: Icons.lock_outline,
+                obscureText: _obscurePassword,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.password],
+                onToggleObscure: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+                onSubmitted: (_) => _login(),
+                validator: (value) =>
+                    (value ?? '').isEmpty ? 'Enter your password' : null,
+              ),
+              SizedBox(height: 24.h),
+              AuthPrimaryButton(
+                label: 'Sign in',
+                loading: _isLoading,
+                onPressed: _login,
+              ),
+            ],
           ),
         ),
       ),

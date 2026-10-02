@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import '../services/user_service.dart';
 import '../constants.dart';
+import '../widgets/nansux_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -14,7 +15,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   final UserService _userService = UserService();
-  
+
   @override
   void initState() {
     super.initState();
@@ -93,10 +94,7 @@ class _PulseLogoState extends State<PulseLogo>
   Widget build(BuildContext context) {
     return ScaleTransition(
       scale: _controller,
-      child: Image.asset(
-        'assets/images/doomscroll.png',
-        height: ScreenUtil().setHeight(150),
-      ),
+      child: NansuXLogo(size: ScreenUtil().setHeight(96), vertical: true),
     );
   }
 }
@@ -142,8 +140,15 @@ class _CircularDotLoadingState extends State<CircularDotLoading>
             alignment: Alignment.center,
             children: List.generate(dotCount, (index) {
               final double angle =
-                  (2 * 3.1415926535 / dotCount) * index + _controller.value * 2 * 3.1415926535;
-              final double scale = 0.5 + 0.5 * (1 - (_controller.value - index / dotCount).abs() * dotCount).clamp(0.0, 1.0);
+                  (2 * 3.1415926535 / dotCount) * index +
+                  _controller.value * 2 * 3.1415926535;
+              final double scale =
+                  0.5 +
+                  0.5 *
+                      (1 -
+                              (_controller.value - index / dotCount).abs() *
+                                  dotCount)
+                          .clamp(0.0, 1.0);
               return Transform.translate(
                 offset: Offset(radius * cos(angle), radius * sin(angle)),
                 child: Transform.scale(

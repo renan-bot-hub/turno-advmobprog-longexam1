@@ -1,3 +1,4 @@
+import 'avatar_image.dart';
 import '../screens/detail_screen.dart';
 
 import '../widgets/custom_font.dart';
@@ -70,7 +71,7 @@ class CustomInfo extends StatelessWidget {
               (hasAvatar)
                   ? CircleAvatar(
                       radius: 22,
-                      backgroundImage: NetworkImage(avatar),
+                      backgroundImage: avatarImage(avatar),
                       backgroundColor: colors.surface,
                     )
                   : CircleAvatar(
@@ -147,7 +148,7 @@ class CustomInfoModified extends CustomInfo {
     super.image,
     required super.postId,
     super.commentUserId,
-    super.commentAvatar
+    super.commentAvatar,
   });
 
   final bool changeLeading, nullifyTrailing;
@@ -165,7 +166,7 @@ class CustomInfoModified extends CustomInfo {
           (hasAvatar)
               ? CircleAvatar(
                   radius: 25,
-                  backgroundImage: AssetImage(avatar),
+                  backgroundImage: avatarImage(avatar),
                   backgroundColor: Theme.of(context).colorScheme.surface,
                 )
               : CircleAvatar(
